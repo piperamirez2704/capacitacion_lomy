@@ -96,6 +96,22 @@
   .result-stats .stat .lbl{font-size:11px; color:var(--gris-med); text-transform:uppercase;}
   .btn{display:block; width:100%; padding:14px; border:none; border-radius:8px; background:var(--rojo); color:#fff; font-size:15px; font-weight:600; cursor:pointer; text-align:center; margin-top:10px;}
   .btn-secondary{background:var(--blanco); color:var(--rojo); border:1.5px solid var(--rojo);}
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .ranking-note{font-size:12px; color:var(--gris-med); margin-top:14px; line-height:1.4;}
+
+  /* RANKING */
+  .ranking-row{
+    background:var(--blanco); border:1px solid var(--borde); border-radius:12px; padding:12px 14px;
+    margin-bottom:8px; display:flex; align-items:center; gap:12px;
+  }
+  .ranking-row.yo{border-color:var(--rojo); background:#fdf1f2;}
+  .ranking-pos{font-size:18px; font-weight:700; width:30px; text-align:center; flex-shrink:0;}
+  .ranking-info{flex:1;}
+  .ranking-info .nombre{font-size:14px; font-weight:600;}
+  .ranking-info .local{font-size:11px; color:var(--gris-med);}
+  .ranking-datos{text-align:right; flex-shrink:0;}
+  .ranking-datos .estrellas{font-size:13px; color:var(--rojo); letter-spacing:1px;}
+  .ranking-datos .tiempo{font-size:11px; color:var(--gris-med); margin-top:2px;}
 </style>
 </head>
 <body>
@@ -158,13 +174,44 @@
         <div class="stat"><div class="val" id="result-std">00:00</div><div class="lbl" id="result-std-lbl">Estándar</div></div>
         <div class="stat"><div class="val" id="result-errors">0</div><div class="lbl">Errores</div></div>
       </div>
+      <p class="ranking-note" id="ranking-note" style="display:none;"></p>
       <button class="btn" onclick="reintentar()">Reintentar</button>
+      <button class="btn btn-secondary" id="ver-ranking-btn" onclick="verRanking()">Ver ranking</button>
       <button class="btn btn-secondary" onclick="salirAlSelector()">Elegir otro producto</button>
     </div>
   </div>
 </div>
 
+<!-- ============ RANKING ============ -->
+<div id="ranking-screen" class="screen">
+  <header class="top">
+    <div class="row">
+      <button class="back-btn" onclick="showScreen('result-screen')">← Volver</button>
+      <span></span>
+    </div>
+    <h2 id="ranking-titulo" style="margin-top:8px;">Ranking</h2>
+    <p class="sub" id="ranking-sub">Producto</p>
+  </header>
+  <div class="wrap">
+    <div id="ranking-list"></div>
+  </div>
+</div>
+
 <script>
+/* ======================================================================
+   IDENTIDAD Y BACKEND — el portal pasa quién juega por la URL (?personaId=&nombre=&local=)
+   cuando abre este simulador como módulo. Si falta, el simulador sigue funcionando
+   pero sin guardar resultados ni mostrar ranking.
+   ====================================================================== */
+const API_URL = "https://script.google.com/macros/s/AKfycbxKC5O9uvZ3-Je9rl5dc1m-IFLZJqxF0Hjc9zTqdz-McrHnaZuvQ2h_9Csu6iSN2c_a/exec";
+const paramsURL = new URLSearchParams(window.location.search);
+const identidad = {
+  personaId: paramsURL.get("personaId") || "",
+  nombre: paramsURL.get("nombre") || "",
+  local: paramsURL.get("local") || "",
+};
+const tieneIdentidad = !!identidad.personaId;
+
 /* ======================================================================
    CATÁLOGO DE INSUMOS — basado en POE_Hamburguesas_Lomy, POE_Productos_Lomy
    y MANUAL_POE_Armado_Ensamble_COMPLETO (vigentes jun. 2026)
@@ -597,7 +644,71 @@ function finishGame() {
   document.getElementById("result-std-lbl").textContent = largo ? "Límite (por errores)" : "Meta (3★)";
   document.getElementById("result-errors").textContent = errores;
 
+  const rankingNote = document.getElementById("ranking-note");
+  const verRankingBtn = document.getElementById("ver-ranking-btn");
+  if (tieneIdentidad) {
+    rankingNote.style.display = "none";
+    verRankingBtn.disabled = false;
+    guardarResultado(producto, stars, elapsedSec, errores);
+  } else {
+    rankingNote.style.display = "block";
+    rankingNote.textContent = "Abrí este simulador desde el portal de capacitación para guardar tu resultado y ver el ranking.";
+    verRankingBtn.disabled = true;
+  }
+
   showScreen("result-screen");
+}
+
+async function guardarResultado(producto, estrellas, tiempoSeg, errores) {
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "guardarResultadoSimulador",
+        personaId: identidad.personaId,
+        nombre: identidad.nombre,
+        local: identidad.local,
+        productoId: producto.id,
+        productoNombre: producto.nombre,
+        estrellas, tiempoSeg, errores,
+      }),
+    });
+  } catch (err) {
+    console.error("No se pudo guardar el resultado del simulador:", err);
+  }
+}
+
+async function verRanking() {
+  const producto = state.producto;
+  document.getElementById("ranking-sub").textContent = producto.nombre;
+  const list = document.getElementById("ranking-list");
+  list.innerHTML = `<p class="zone-hint">Cargando…</p>`;
+  showScreen("ranking-screen");
+
+  try {
+    const r = await fetch(`${API_URL}?action=rankingSimulador&productoId=${encodeURIComponent(producto.id)}`);
+    const ranking = await r.json();
+    if (!Array.isArray(ranking) || ranking.length === 0) {
+      list.innerHTML = `<p class="zone-hint">Todavía nadie completó este producto. ¡Sé el primero!</p>`;
+      return;
+    }
+    const medallas = ["🥇", "🥈", "🥉"];
+    list.innerHTML = ranking.map((row, i) => `
+      <div class="ranking-row ${String(identidad.personaId) === String(row.personaId) ? "yo" : ""}">
+        <div class="ranking-pos">${medallas[i] || (i + 1)}</div>
+        <div class="ranking-info">
+          <div class="nombre">${row.nombre}</div>
+          <div class="local">${row.local || ""}</div>
+        </div>
+        <div class="ranking-datos">
+          <div class="estrellas">${"★".repeat(row.estrellas)}${"☆".repeat(3 - row.estrellas)}</div>
+          <div class="tiempo">${formatTime(row.tiempoSeg)}</div>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    list.innerHTML = `<p class="zone-hint">No se pudo cargar el ranking. Revisá tu conexión.</p>`;
+  }
 }
 
 function reintentar() {
