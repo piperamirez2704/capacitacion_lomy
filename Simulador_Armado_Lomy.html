@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simulador de Armado — Lomy</title>
+<style>
+  :root{
+    --rojo:#B03040; --rojo-dark:#7a2230; --gris-osc:#2B2B2B; --gris-med:#6b6b6b;
+    --gris-claro:#f2f2f0; --borde:#e2e0da; --verde:#3b8a52; --amarillo:#c98a1c;
+    --blanco:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{overscroll-behavior:none;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--gris-claro); color:var(--gris-osc); min-height:100vh;
+  }
+  .screen{display:none; min-height:100vh;}
+  .screen.active{display:block;}
+  #game-screen.active{display:flex; flex-direction:column; height:100vh; height:100dvh;}
+  #game-screen > header.top{flex-shrink:0;}
+  .wrap{max-width:480px; margin:0 auto; padding:20px 16px 40px;}
+
+  header.top{background:var(--rojo); color:#fff; padding:18px 16px 20px;}
+  header.top .row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  header.top h2{font-size:18px; font-weight:600;}
+  header.top .sub{font-size:12px; opacity:0.85; margin-top:2px;}
+  .back-btn{background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:14px; padding:6px 12px; border-radius:6px; cursor:pointer;}
+
+  /* SELECTOR */
+  .logo{text-align:center; margin-bottom:6px;}
+  .logo h1{color:var(--rojo); font-size:28px; letter-spacing:1px;}
+  .logo p{color:var(--gris-med); font-size:13px; margin-top:4px;}
+  .intro{background:var(--blanco); border:1px solid var(--borde); border-radius:12px; padding:14px 16px; margin:18px 0; font-size:13px; color:var(--gris-med); line-height:1.5;}
+  .prod-card{
+    background:var(--blanco); border-radius:12px; padding:16px; margin-bottom:10px;
+    border:1px solid var(--borde); cursor:pointer; display:flex; align-items:center; gap:14px;
+  }
+  .prod-card:active{background:#f8f7f5;}
+  .prod-icon{font-size:28px; width:44px; text-align:center; flex-shrink:0;}
+  .prod-info{flex:1;}
+  .prod-info h3{font-size:15px; font-weight:600; margin-bottom:3px;}
+  .prod-info p{font-size:12px; color:var(--gris-med);}
+  .prod-info .meta{font-size:11px; color:var(--gris-med); margin-top:4px; display:flex; gap:10px;}
+  .section-title{font-size:12px; font-weight:700; color:var(--gris-med); text-transform:uppercase; letter-spacing:0.5px; margin:20px 0 10px;}
+  .section-title:first-child{margin-top:0;}
+
+  /* GAME */
+  .game-wrap{padding:16px; flex:1 1 auto; min-height:0; overflow-y:auto;}
+  .status-row{display:flex; justify-content:space-between; align-items:center; background:var(--blanco); border:1px solid var(--borde); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px;}
+  .status-row .stat{text-align:center;}
+  .status-row .stat .val{font-size:16px; font-weight:700; color:var(--rojo);}
+  .status-row .stat .lbl{font-size:10px; color:var(--gris-med); text-transform:uppercase;}
+
+  #build-zone{
+    background:var(--blanco); border:2px dashed var(--borde); border-radius:16px;
+    min-height:220px; padding:14px; display:flex; flex-direction:column-reverse; gap:6px;
+    justify-content:flex-start; transition:border-color 0.2s, background 0.2s;
+  }
+  #build-zone.error-flash{border-color:var(--rojo); background:#fdf1f2;}
+  .layer{
+    background:var(--gris-claro); border-radius:10px; padding:10px 12px; display:flex; align-items:center; gap:10px;
+    font-size:13px; font-weight:600; animation:drop-in 0.25s ease;
+  }
+  .layer.base{background:#fff4d6; border:1px solid #eede9c;}
+  .layer .ic{font-size:18px;}
+  @keyframes drop-in{ from{opacity:0; transform:translateY(-14px);} to{opacity:1; transform:translateY(0);} }
+  .zone-hint{text-align:center; color:var(--gris-med); font-size:12px; padding:20px 0;}
+
+  .tray-wrap{
+    flex-shrink:0; background:var(--blanco); max-height:34vh; overflow-y:auto;
+    border-top:1px solid var(--borde); padding:12px 16px 18px; box-shadow:0 -2px 8px rgba(0,0,0,0.06);
+  }
+  .tray-title{font-size:11px; color:var(--gris-med); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; text-align:center;}
+  .tray{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:480px; margin:0 auto; min-height:44px;}
+  .chip{
+    background:var(--rojo); color:#fff; border-radius:20px; padding:9px 14px; font-size:13px; font-weight:600;
+    display:flex; align-items:center; gap:6px; cursor:grab; user-select:none; touch-action:none;
+    box-shadow:0 2px 4px rgba(0,0,0,0.15);
+  }
+  .chip .ic{font-size:15px;}
+  .chip.dragging{cursor:grabbing; box-shadow:0 6px 14px rgba(0,0,0,0.25); opacity:0.95;}
+  .chip.used{display:none;}
+  @keyframes shake{ 10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);} 30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);} }
+  .chip.shake{animation:shake 0.4s;}
+
+  /* RESULT */
+  .result-card{background:var(--blanco); border-radius:14px; padding:28px 20px; text-align:center; border:2px solid var(--rojo); margin-top:20px;}
+  .stars{font-size:34px; letter-spacing:4px; margin-bottom:10px;}
+  .result-card h3{font-size:19px; margin-bottom:6px;}
+  .result-card p{font-size:13px; color:var(--gris-med); margin-bottom:2px;}
+  .result-stats{display:flex; justify-content:center; gap:24px; margin:18px 0;}
+  .result-stats .stat{text-align:center;}
+  .result-stats .stat .val{font-size:22px; font-weight:700; color:var(--gris-osc);}
+  .result-stats .stat .lbl{font-size:11px; color:var(--gris-med); text-transform:uppercase;}
+  .btn{display:block; width:100%; padding:14px; border:none; border-radius:8px; background:var(--rojo); color:#fff; font-size:15px; font-weight:600; cursor:pointer; text-align:center; margin-top:10px;}
+  .btn-secondary{background:var(--blanco); color:var(--rojo); border:1.5px solid var(--rojo);}
+</style>
+</head>
+<body>
+
+<!-- ============ SELECTOR DE PRODUCTO ============ -->
+<div id="selector-screen" class="screen active">
+  <header class="top">
+    <div class="row">
+      <div>
+        <h2>Simulador de Armado</h2>
+        <p class="sub">Estación Armado · Cocina</p>
+      </div>
+    </div>
+  </header>
+  <div class="wrap">
+    <div class="intro">
+      Arrastrá cada insumo al sándwich en el <strong>orden correcto</strong> según el POE vigente.
+      Armá en <strong>30 segundos</strong> sin errores para 3★, en 40s para 2★ — como en el local en hora pico.
+    </div>
+    <div id="product-list"></div>
+  </div>
+</div>
+
+<!-- ============ JUEGO ============ -->
+<div id="game-screen" class="screen">
+  <header class="top">
+    <div class="row">
+      <button class="back-btn" onclick="salirAlSelector()">← Salir</button>
+      <span></span>
+    </div>
+    <h2 id="game-titulo" style="margin-top:8px;">Producto</h2>
+    <p class="sub" id="game-sub">Paso 1 de N</p>
+  </header>
+  <div class="wrap game-wrap">
+    <div class="status-row">
+      <div class="stat"><div class="val" id="stat-time">00:00</div><div class="lbl">Tiempo</div></div>
+      <div class="stat"><div class="val" id="stat-errors">0</div><div class="lbl">Errores</div></div>
+      <div class="stat"><div class="val" id="stat-progress">0/0</div><div class="lbl">Pasos</div></div>
+    </div>
+    <div id="build-zone"><div class="zone-hint" id="zone-hint">Arrastrá acá los insumos, en orden</div></div>
+  </div>
+  <div class="tray-wrap">
+    <p class="tray-title">Insumos disponibles</p>
+    <div class="tray" id="tray"></div>
+  </div>
+</div>
+
+<!-- ============ RESULTADO ============ -->
+<div id="result-screen" class="screen">
+  <header class="top">
+    <div class="row"><h2>Resultado</h2></div>
+  </header>
+  <div class="wrap">
+    <div class="result-card" id="result-card">
+      <div class="stars" id="result-stars">★★★</div>
+      <h3 id="result-titulo">¡Buen trabajo!</h3>
+      <p id="result-msg">Mensaje</p>
+      <div class="result-stats">
+        <div class="stat"><div class="val" id="result-time">00:00</div><div class="lbl">Tu tiempo</div></div>
+        <div class="stat"><div class="val" id="result-std">00:00</div><div class="lbl" id="result-std-lbl">Estándar</div></div>
+        <div class="stat"><div class="val" id="result-errors">0</div><div class="lbl">Errores</div></div>
+      </div>
+      <button class="btn" onclick="reintentar()">Reintentar</button>
+      <button class="btn btn-secondary" onclick="salirAlSelector()">Elegir otro producto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   CATÁLOGO DE INSUMOS — basado en POE_Hamburguesas_Lomy, POE_Productos_Lomy
+   y MANUAL_POE_Armado_Ensamble_COMPLETO (vigentes jun. 2026)
+   ====================================================================== */
+const INSUMOS = {
+  base:      { label: "Pan tostado con mayonesa de choclo", ic: "🍞" },
+  medallon_cheddar: { label: "Medallón con queso cheddar", ic: "🧀" },
+  medallon_mozza:   { label: "Medallón con queso mozzarella", ic: "🧀" },
+  bacon:     { label: "Bacon crocante", ic: "🥓" },
+  lechuga:   { label: "Lechuga", ic: "🥬" },
+  tomate:    { label: "Tomate", ic: "🍅" },
+  jamon:     { label: "Jamón", ic: "🍖" },
+  huevo:     { label: "Huevo (yema firme)", ic: "🍳" },
+  cebolla:   { label: "Cebolla caramelizada", ic: "🧅" },
+  tapa:      { label: "Cerrar con la tapa (ketchup)", ic: "🔺" },
+
+  /* --- Árabes (wraps) --- */
+  base_arabe: { label: "Pan árabe extendido sobre la mesada", ic: "🫓" },
+  mayo_ajo_40_3h6v:        { label: "Mayo de ajo — 40g (3 líneas horiz. + 6 vert.)", ic: "🧄" },
+  mayo_ajo_35_1v2h:        { label: "Mayo de ajo — 35g (1 línea vert. + 2 horiz.)", ic: "🧄" },
+  mayo_choclo_arabe_40:    { label: "Mayo de choclo — 40g (3 líneas horiz. + 6 vert.)", ic: "🌽" },
+  repollo_70:  { label: "Repollo fino — 70g", ic: "🥬" },
+  repollo_50:  { label: "Repollo fino — 50g", ic: "🥬" },
+  tomate_40:   { label: "Tomate en cubos — 40g", ic: "🍅" },
+  tomate_60:   { label: "Tomate en cubos — 60g", ic: "🍅" },
+  carne_arabe: { label: "Carne vacuna marinada — 120g cruda (cocida pesa 80–85g)", ic: "🥩" },
+  pollo_arabe: { label: "Pollo marinado — 120g crudo (cocido pesa 80–85g)", ic: "🍗" },
+  mixto_arabe: { label: "Mixto — 60g pollo + 60g carne (cocido pesa 80–85g)", ic: "🍖" },
+  huevo_mitad: { label: "Huevo cocido, partido a la mitad", ic: "🍳" },
+  huevo_veg:   { label: "Huevo calentado en plancha", ic: "🍳" },
+  queso_catupiry_30: { label: "Queso catupiry — 30g", ic: "🧀" },
+  queso_catupiry_20: { label: "Queso catupiry — 20g", ic: "🧀" },
+  pollo_catupiry_150: { label: "Pechuga cocida — 150g (porción doble)", ic: "🍗" },
+  queso_mozza_20:     { label: "Queso muzzarella — 1 feta (20g)", ic: "🧀" },
+  cebolla_rehogada_20: { label: "Cebolla rehogada — 20g (calentar en plancha)", ic: "🧅" },
+  enrollar_arabe: { label: "Colocar todo caliente y enrollar el pan árabe", ic: "🌯" },
+
+  /* --- Sándwiches Lomy (lomo feteado, dos panes) --- */
+  pan_arriba: { label: "Pan de arriba, listo en la mesada", ic: "🍞" },
+  ls_mayo_arriba_20: { label: "Mayo de choclo — 20g en pan de arriba (2 círculos cruzados)", ic: "🌽" },
+  ls_ketchup_5:      { label: "Ketchup — 5g (1 círculo en el centro)", ic: "🥫" },
+  ls_lechuga_10:     { label: "Lechuga repollada — 10g", ic: "🥬" },
+  ls_tomate_15:      { label: "Tomate — 15g", ic: "🍅" },
+  ls_lomo_feteado:   { label: "Lomo vacuno feteado (cocido en plancha)", ic: "🥩" },
+  ls_queso_muzza_20: { label: "Queso muzzarella — 1 feta (20g), sobre la carne", ic: "🧀" },
+  ls_huevo_mitad:    { label: "Huevo partido a la mitad, calentado en plancha", ic: "🍳" },
+  ls_huevo_entero:   { label: "Huevo entero, calentado en plancha", ic: "🍳" },
+  ls_jamon_20:       { label: "Jamón — 1 feta (20g), calentado en plancha", ic: "🍖" },
+  ls_bacon_10:       { label: "Bacon — 10g, calentado en plancha", ic: "🥓" },
+  ls_mayo_abajo_15:  { label: "Mayo de choclo — 15g en pan de abajo (2 círculos cruzados)", ic: "🌽" },
+  ls_armar:          { label: "Armar: unir pan de abajo con pan de arriba", ic: "🥪" },
+  caballo_mayo_arriba_20: { label: "Mayonesa — 20g en pan de arriba (6 líneas: 3 vert. + 3 cruzadas)", ic: "🥫" },
+  caballo_cebolla_20:     { label: "Cebolla rehogada — 20g, calentada en plancha", ic: "🧅" },
+  caballo_mayo_abajo_10:  { label: "Mayonesa — 10g en pan de abajo (3 líneas)", ic: "🥫" },
+
+  /* --- Pollo Especial (pechuga feteada, dos panes) --- */
+  pe_mayo_arriba_15: { label: "Mayo de choclo — 15g en pan de arriba (2 círculos: borde + centro)", ic: "🌽" },
+  pe_mayo_abajo_15:  { label: "Mayo de choclo — 15g en pan de abajo (2 círculos)", ic: "🌽" },
+  pe_ketchup_5:      { label: "Ketchup — 5g (1 círculo en el centro)", ic: "🥫" },
+  pe_lechuga_10:     { label: "Lechuga repollada — 10g", ic: "🥬" },
+  pe_tomate_15:      { label: "Tomate — 15g", ic: "🍅" },
+  pe_pollo_feteado:  { label: "Pechuga de pollo feteada (cocinada en plancha)", ic: "🍗" },
+  pe_queso_catupiry_30: { label: "Queso catupiry — 30g, calentado en plancha sobre la carne", ic: "🧀" },
+  pe_cebolla_20:     { label: "Cebolla rehogada — 20g, calentada en plancha", ic: "🧅" },
+  pe_choclo_30:      { label: "Choclo — 30g (medido con vasito de mayo)", ic: "🌽" },
+  pe_jamon_20:       { label: "Jamón — 1 feta (20g), calentado en plancha", ic: "🍖" },
+  pe_bacon_10:       { label: "Bacon — 10g, calentado en plancha", ic: "🥓" },
+};
+
+const PRODUCTOS = [
+  {
+    id: "kesu", nombre: "BURME KESU", icon: "🍔", categoria: "Hamburguesas", baseId: "base",
+    pasos: ["medallon_cheddar", "tapa"],
+    tiempoEstandar: 240, tiempoEsOficial: true,
+  },
+  {
+    id: "kesu_bacon", nombre: "BURME KESU BACON", icon: "🍔", categoria: "Hamburguesas", baseId: "base",
+    pasos: ["medallon_cheddar", "bacon", "tapa"],
+    tiempoEstandar: 300, tiempoEsOficial: true,
+  },
+  {
+    id: "barrio_full", nombre: "BURME LA DE BARRIO FULL", icon: "🍔", categoria: "Hamburguesas", baseId: "base",
+    pasos: ["lechuga", "tomate", "medallon_mozza", "jamon", "bacon", "huevo", "tapa"],
+    tiempoEstandar: 360, tiempoEsOficial: true,
+  },
+  {
+    id: "a_caballo", nombre: "BURME A CABALLO", icon: "🍔", categoria: "Hamburguesas", baseId: "base",
+    pasos: ["medallon_mozza", "cebolla", "huevo", "tapa"],
+    tiempoEstandar: 360, tiempoEsOficial: true,
+  },
+  {
+    id: "arabe_simple_carne", nombre: "LOMY ÁRABE SIMPLE — CARNE", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "carne_arabe", "enrollar_arabe"],
+    tiempoEstandar: 210, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_simple_pollo", nombre: "LOMY ÁRABE SIMPLE — POLLO", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "pollo_arabe", "enrollar_arabe"],
+    tiempoEstandar: 210, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_simple_mixto", nombre: "LOMY ÁRABE SIMPLE — MIXTO", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "mixto_arabe", "enrollar_arabe"],
+    tiempoEstandar: 210, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_completo_carne", nombre: "LOMY ÁRABE COMPLETO — CARNE", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "huevo_mitad", "carne_arabe", "enrollar_arabe"],
+    tiempoEstandar: 240, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_completo_pollo", nombre: "LOMY ÁRABE COMPLETO — POLLO", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "huevo_mitad", "pollo_arabe", "enrollar_arabe"],
+    tiempoEstandar: 240, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_completo_mixto", nombre: "LOMY ÁRABE COMPLETO — MIXTO", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_40_3h6v", "repollo_70", "tomate_40", "huevo_mitad", "mixto_arabe", "enrollar_arabe"],
+    tiempoEstandar: 240, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_doble_pollo", nombre: "ÁRABE DOBLE POLLO CATUPIRY", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_choclo_arabe_40", "queso_catupiry_30", "pollo_catupiry_150", "enrollar_arabe"],
+    tiempoEstandar: 180, tiempoEsOficial: false,
+  },
+  {
+    id: "arabe_vegetariano", nombre: "ÁRABE VEGETARIANO / GUASÚ", icon: "🌯", categoria: "Árabes", baseId: "base_arabe",
+    pasos: ["mayo_ajo_35_1v2h", "repollo_50", "tomate_60", "queso_catupiry_20", "huevo_veg", "queso_mozza_20", "cebolla_rehogada_20", "enrollar_arabe"],
+    tiempoEstandar: 300, tiempoEsOficial: false,
+  },
+  {
+    id: "lomy_sandwich_simple", nombre: "LOMY SANDWICH SIMPLE", icon: "🥪", categoria: "Sándwiches Lomy", baseId: "pan_arriba",
+    pasos: ["ls_mayo_arriba_20", "ls_ketchup_5", "ls_lechuga_10", "ls_tomate_15", "ls_lomo_feteado", "ls_queso_muzza_20", "ls_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 180, tiempoEsOficial: false,
+  },
+  {
+    id: "lomy_sandwich_completo", nombre: "LOMY SANDWICH COMPLETO", icon: "🥪", categoria: "Sándwiches Lomy", baseId: "pan_arriba",
+    pasos: ["ls_mayo_arriba_20", "ls_ketchup_5", "ls_lechuga_10", "ls_tomate_15", "ls_lomo_feteado", "ls_queso_muzza_20", "ls_huevo_mitad", "ls_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 210, tiempoEsOficial: false,
+  },
+  {
+    id: "lomy_sandwich_full", nombre: "LOMY SANDWICH FULL", icon: "🥪", categoria: "Sándwiches Lomy", baseId: "pan_arriba",
+    pasos: ["ls_mayo_arriba_20", "ls_ketchup_5", "ls_lechuga_10", "ls_tomate_15", "ls_lomo_feteado", "ls_queso_muzza_20", "ls_jamon_20", "ls_huevo_entero", "ls_bacon_10", "ls_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 270, tiempoEsOficial: false,
+  },
+  {
+    id: "lomy_a_caballo", nombre: "LOMY A CABALLO (Sándwich)", icon: "🥪", categoria: "Sándwiches Lomy", baseId: "pan_arriba",
+    pasos: ["caballo_mayo_arriba_20", "caballo_cebolla_20", "ls_lomo_feteado", "ls_queso_muzza_20", "ls_huevo_entero", "caballo_mayo_abajo_10", "ls_armar"],
+    tiempoEstandar: 200, tiempoEsOficial: false,
+  },
+  {
+    id: "pollo_simple", nombre: "POLLO ESPECIAL SIMPLE", icon: "🍗", categoria: "Pollo Especial", baseId: "pan_arriba",
+    pasos: ["pe_mayo_arriba_15", "pe_ketchup_5", "pe_lechuga_10", "pe_tomate_15", "pe_pollo_feteado", "pe_queso_catupiry_30", "pe_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 180, tiempoEsOficial: false,
+  },
+  {
+    id: "pollo_completo", nombre: "POLLO ESPECIAL COMPLETO", icon: "🍗", categoria: "Pollo Especial", baseId: "pan_arriba",
+    pasos: ["pe_mayo_arriba_15", "pe_ketchup_5", "pe_lechuga_10", "pe_tomate_15", "pe_pollo_feteado", "pe_queso_catupiry_30", "ls_huevo_entero", "pe_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 210, tiempoEsOficial: false,
+  },
+  {
+    id: "pollo_a_caballo", nombre: "POLLO ESPECIAL A CABALLO", icon: "🍗", categoria: "Pollo Especial", baseId: "pan_arriba",
+    pasos: ["pe_mayo_arriba_15", "pe_cebolla_20", "pe_pollo_feteado", "pe_queso_catupiry_30", "ls_huevo_entero", "pe_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 200, tiempoEsOficial: false,
+  },
+  {
+    id: "pollo_choclo", nombre: "POLLO ESPECIAL CHOCLO", icon: "🍗", categoria: "Pollo Especial", baseId: "pan_arriba",
+    pasos: ["pe_mayo_arriba_15", "pe_choclo_30", "pe_pollo_feteado", "pe_queso_catupiry_30", "pe_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 170, tiempoEsOficial: false,
+  },
+  {
+    id: "pollo_full", nombre: "POLLO ESPECIAL FULL", icon: "🍗", categoria: "Pollo Especial", baseId: "pan_arriba",
+    pasos: ["pe_mayo_arriba_15", "pe_ketchup_5", "pe_lechuga_10", "pe_tomate_15", "pe_pollo_feteado", "pe_queso_catupiry_30", "pe_jamon_20", "ls_huevo_entero", "pe_bacon_10", "pe_mayo_abajo_15", "ls_armar"],
+    tiempoEstandar: 270, tiempoEsOficial: false,
+  },
+];
+
+let state = {
+  producto: null,
+  stepIndex: 0,
+  errores: 0,
+  startTime: 0,
+  timerInterval: null,
+  elapsedSec: 0,
+};
+
+/* ---------------- SELECTOR ---------------- */
+function renderSelector() {
+  const list = document.getElementById("product-list");
+  const categorias = [...new Set(PRODUCTOS.map(p => p.categoria))];
+  list.innerHTML = categorias.map(cat => `
+    <p class="section-title">${cat}</p>
+    ${PRODUCTOS.filter(p => p.categoria === cat).map(p => `
+      <div class="prod-card" onclick="iniciarProducto('${p.id}')">
+        <div class="prod-icon">${p.icon}</div>
+        <div class="prod-info">
+          <h3>${p.nombre}</h3>
+          <p>${p.pasos.length} pasos de armado</p>
+          <div class="meta"><span>${esProductoLargo(p) ? "🎯 90s, puntaje por errores" : "🎯 30s para 3★ · 40s para 2★"}</span></div>
+        </div>
+      </div>
+    `).join("")}
+  `).join("");
+}
+
+function salirAlSelector() {
+  clearInterval(state.timerInterval);
+  showScreen("selector-screen");
+}
+
+/* ---------------- JUEGO ---------------- */
+function iniciarProducto(id) {
+  const producto = PRODUCTOS.find(p => p.id === id);
+  state = { producto, stepIndex: 0, errores: 0, startTime: Date.now(), elapsedSec: 0, timerInterval: null };
+
+  const base = INSUMOS[producto.baseId];
+  document.getElementById("game-titulo").textContent = producto.nombre;
+  document.getElementById("build-zone").innerHTML = `
+    <div class="layer base"><span class="ic">${base.ic}</span><span>${base.label}</span></div>
+  `;
+  updateProgressUI();
+  renderTray();
+
+  state.timerInterval = setInterval(tick, 1000);
+  showScreen("game-screen");
+}
+
+function tick() {
+  state.elapsedSec = Math.floor((Date.now() - state.startTime) / 1000);
+  document.getElementById("stat-time").textContent = formatTime(state.elapsedSec);
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = (sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function updateProgressUI() {
+  const total = state.producto.pasos.length;
+  document.getElementById("game-sub").textContent = `Paso ${Math.min(state.stepIndex + 1, total)} de ${total}`;
+  document.getElementById("stat-progress").textContent = `${state.stepIndex}/${total}`;
+  document.getElementById("stat-errors").textContent = state.errores;
+}
+
+function flattenPasos(pasos) {
+  return pasos.flatMap(p => Array.isArray(p) ? p : [p]);
+}
+
+function renderTray() {
+  const producto = state.producto;
+  const pasosUnicos = [...new Set(flattenPasos(producto.pasos))];
+  const baseIds = new Set(PRODUCTOS.map(p => p.baseId));
+  const idsDeLaCategoria = new Set(
+    PRODUCTOS.filter(p => p.categoria === producto.categoria).flatMap(p => flattenPasos(p.pasos))
+  );
+  const todosIds = [...idsDeLaCategoria].filter(id => !baseIds.has(id));
+  const distractores = todosIds.filter(id => !pasosUnicos.includes(id));
+  shuffle(distractores);
+  const numDistractores = Math.min(3, distractores.length);
+  const trayIds = shuffle([...pasosUnicos, ...distractores.slice(0, numDistractores)]);
+
+  const tray = document.getElementById("tray");
+  tray.innerHTML = "";
+  trayIds.forEach(id => {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.dataset.id = id;
+    chip.innerHTML = `<span class="ic">${INSUMOS[id].ic}</span><span>${INSUMOS[id].label}</span>`;
+    makeDraggable(chip);
+    tray.appendChild(chip);
+  });
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ---------------- DRAG & DROP (pointer events, mouse + touch) ---------------- */
+function makeDraggable(chip) {
+  chip.addEventListener("pointerdown", (e) => onPointerDown(e, chip));
+}
+
+function onPointerDown(e, chip) {
+  if (chip.classList.contains("used")) return;
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  e.preventDefault();
+
+  const rect = chip.getBoundingClientRect();
+  const offsetX = e.clientX - rect.left;
+  const offsetY = e.clientY - rect.top;
+  const activePointerId = e.pointerId;
+  const originalParent = chip.parentElement;
+  const originalNext = chip.nextSibling;
+
+  chip.classList.add("dragging");
+  chip.style.position = "fixed";
+  chip.style.left = rect.left + "px";
+  chip.style.top = rect.top + "px";
+  chip.style.width = rect.width + "px";
+  chip.style.zIndex = 1000;
+  chip.style.willChange = "transform";
+  document.body.appendChild(chip);
+
+  let pendingX = 0, pendingY = 0, rafId = null;
+
+  function applyTransform() {
+    chip.style.transform = `translate3d(${pendingX}px, ${pendingY}px, 0)`;
+    rafId = null;
+  }
+
+  function onMove(ev) {
+    if (ev.pointerId !== activePointerId) return;
+    pendingX = ev.clientX - offsetX - rect.left;
+    pendingY = ev.clientY - offsetY - rect.top;
+    if (rafId === null) rafId = requestAnimationFrame(applyTransform);
+  }
+
+  function onUp(ev) {
+    if (ev.pointerId !== activePointerId) return;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    window.removeEventListener("pointercancel", onUp);
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    chip.classList.remove("dragging");
+    chip.style.position = "";
+    chip.style.left = "";
+    chip.style.top = "";
+    chip.style.width = "";
+    chip.style.zIndex = "";
+    chip.style.transform = "";
+    chip.style.willChange = "";
+
+    if (originalNext) originalParent.insertBefore(chip, originalNext);
+    else originalParent.appendChild(chip);
+
+    handleDrop(chip, ev.clientX, ev.clientY);
+  }
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+}
+
+function handleDrop(chip, x, y) {
+  const zone = document.getElementById("build-zone");
+  const zr = zone.getBoundingClientRect();
+  const overZone = x >= zr.left && x <= zr.right && y >= zr.top && y <= zr.bottom;
+  if (!overZone) return;
+
+  const expected = state.producto.pasos[state.stepIndex];
+  const esCorrecto = Array.isArray(expected) ? expected.includes(chip.dataset.id) : chip.dataset.id === expected;
+  if (esCorrecto) {
+    onCorrect(chip);
+  } else {
+    onWrong(chip);
+  }
+}
+
+function onCorrect(chip) {
+  chip.classList.add("used");
+  const zone = document.getElementById("build-zone");
+  const hint = document.getElementById("zone-hint");
+  if (hint) hint.remove();
+
+  const id = chip.dataset.id;
+  const layer = document.createElement("div");
+  layer.className = "layer";
+  layer.innerHTML = `<span class="ic">${INSUMOS[id].ic}</span><span>${INSUMOS[id].label}</span>`;
+  zone.appendChild(layer);
+
+  state.stepIndex++;
+  updateProgressUI();
+
+  if (state.stepIndex >= state.producto.pasos.length) {
+    setTimeout(finishGame, 350);
+  }
+}
+
+function onWrong(chip) {
+  state.errores++;
+  updateProgressUI();
+  const zone = document.getElementById("build-zone");
+  zone.classList.add("error-flash");
+  setTimeout(() => zone.classList.remove("error-flash"), 300);
+  chip.classList.add("shake");
+  setTimeout(() => chip.classList.remove("shake"), 400);
+}
+
+/* ---------------- RESULTADO ---------------- */
+const META_3_ESTRELLAS = 30;
+const META_2_ESTRELLAS = 40;
+const PASOS_PRODUCTO_LARGO = 10;
+const META_TIEMPO_LARGO = 90;
+
+function esProductoLargo(producto) {
+  return producto.pasos.length >= PASOS_PRODUCTO_LARGO;
+}
+
+function finishGame() {
+  clearInterval(state.timerInterval);
+  const { producto, errores, elapsedSec } = state;
+  const largo = esProductoLargo(producto);
+
+  let stars = 1;
+  if (largo) {
+    if (elapsedSec <= META_TIEMPO_LARGO) {
+      if (errores === 0) stars = 3;
+      else if (errores <= 2) stars = 2;
+    }
+  } else {
+    if (errores === 0 && elapsedSec <= META_3_ESTRELLAS) stars = 3;
+    else if (errores <= 2 && elapsedSec <= META_2_ESTRELLAS) stars = 2;
+  }
+
+  document.getElementById("result-stars").textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+  document.getElementById("result-titulo").textContent =
+    stars === 3 ? "¡Excelente armado!" : stars === 2 ? "¡Bien! Se puede afinar" : "Sigamos practicando";
+  document.getElementById("result-msg").textContent =
+    stars === 3 ? "Orden perfecto y bien rápido." :
+    stars === 2 ? "Orden correcto, pero con algún error o demora." :
+    largo ? "Se pasó del tiempo o hubo varios errores — volvé a intentar." :
+    "Repasá el POE y volvé a intentar — la práctica hace al maestro.";
+  document.getElementById("result-time").textContent = formatTime(elapsedSec);
+  document.getElementById("result-std").textContent = formatTime(largo ? META_TIEMPO_LARGO : META_3_ESTRELLAS);
+  document.getElementById("result-std-lbl").textContent = largo ? "Límite (por errores)" : "Meta (3★)";
+  document.getElementById("result-errors").textContent = errores;
+
+  showScreen("result-screen");
+}
+
+function reintentar() {
+  iniciarProducto(state.producto.id);
+}
+
+/* ---------------- NAV ---------------- */
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+renderSelector();
+</script>
+</body>
+</html>
