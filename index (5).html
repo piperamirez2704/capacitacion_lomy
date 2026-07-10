@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capacitación Lomy</title>
+<style>
+  :root{
+    --rojo:#B03040; --rojo-dark:#7a2230; --gris-osc:#2B2B2B; --gris-med:#6b6b6b;
+    --gris-claro:#f2f2f0; --borde:#e2e0da; --verde:#3b8a52; --amarillo:#c98a1c;
+    --blanco:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--gris-claro); color:var(--gris-osc); min-height:100vh;
+  }
+  .screen{display:none; min-height:100vh;}
+  .screen.active{display:block;}
+  .wrap{max-width:480px; margin:0 auto; padding:20px 16px 40px;}
+
+  /* LOGIN */
+  #login-screen .wrap{padding-top:60px;}
+  .logo{text-align:center; margin-bottom:8px;}
+  .logo h1{color:var(--rojo); font-size:32px; letter-spacing:1px;}
+  .logo p{color:var(--gris-med); font-size:14px; margin-top:4px;}
+  .login-card{background:var(--blanco); border-radius:14px; padding:24px; margin-top:32px; box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; color:var(--gris-med); margin-bottom:6px; font-weight:600;}
+  .field input{width:100%; padding:12px 14px; border:1px solid var(--borde); border-radius:8px; font-size:16px;}
+  .field input:focus{outline:none; border-color:var(--rojo);}
+  .btn{
+    display:block; width:100%; padding:14px; border:none; border-radius:8px;
+    background:var(--rojo); color:#fff; font-size:16px; font-weight:600; cursor:pointer; text-align:center;
+  }
+  .btn:active{background:var(--rojo-dark);}
+  .btn-secondary{background:var(--blanco); color:var(--rojo); border:1.5px solid var(--rojo);}
+  .error-msg{color:var(--rojo); font-size:13px; margin-top:10px; text-align:center; display:none;}
+  .hint{text-align:center; font-size:12px; color:var(--gris-med); margin-top:18px;}
+
+  /* HEADER / HOME */
+  header.top{background:var(--rojo); color:#fff; padding:18px 16px 22px;}
+  header.top .row{display:flex; justify-content:space-between; align-items:center;}
+  header.top h2{font-size:18px; font-weight:600;}
+  header.top .rol-tag{font-size:11px; opacity:0.85; text-transform:uppercase; letter-spacing:0.5px;}
+  .logout-btn{background:rgba(255,255,255,0.15); border:none; color:#fff; padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;}
+  .progress-wrap{margin-top:14px;}
+  .progress-track{background:rgba(255,255,255,0.25); border-radius:20px; height:8px; overflow:hidden;}
+  .progress-fill{background:#fff; height:100%; border-radius:20px; transition:width 0.4s;}
+  .progress-label{font-size:12px; margin-top:6px; opacity:0.9;}
+
+  .section-title{font-size:14px; font-weight:600; color:var(--gris-med); text-transform:uppercase; letter-spacing:0.5px; margin:22px 0 10px;}
+  .module-card{
+    background:var(--blanco); border-radius:12px; padding:16px; margin-bottom:10px;
+    display:flex; align-items:center; gap:12px; cursor:pointer; border:1px solid var(--borde);
+  }
+  .module-card:active{background:#f8f7f5;}
+  .status-dot{width:12px; height:12px; border-radius:50%; flex-shrink:0; background:var(--borde);}
+  .status-dot.completado{background:var(--verde);}
+  .status-dot.pendiente{background:var(--amarillo);}
+  .module-info{flex:1;}
+  .module-info h3{font-size:15px; font-weight:600; margin-bottom:3px;}
+  .module-info p{font-size:12px; color:var(--gris-med);}
+  .chip{display:inline-block; font-size:10px; background:var(--gris-claro); color:var(--gris-med); padding:2px 8px; border-radius:20px; margin-top:5px;}
+  .empty-state{text-align:center; padding:40px 20px; color:var(--gris-med); font-size:14px;}
+
+  /* MODULE DETAIL (overlay) */
+  #detail-screen header.top{padding-bottom:16px;}
+  .back-btn{background:none; border:none; color:#fff; font-size:20px; cursor:pointer; padding:4px 8px 4px 0;}
+  .content-box{background:var(--blanco); border-radius:12px; overflow:hidden; margin-bottom:12px; border:1px solid var(--borde);}
+  .content-box iframe.video-frame, .content-box video{width:100%; display:block; aspect-ratio:16/9; border:none;}
+  .content-box iframe.doc-frame{width:100%; display:block; height:70vh; border:none;}
+  .fullscreen-link{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px; margin-bottom:16px; border-radius:8px; border:1.5px solid var(--rojo);
+    color:var(--rojo); font-size:14px; font-weight:600; text-decoration:none;
+  }
+  .content-placeholder{padding:40px 20px; text-align:center; color:var(--gris-med); font-size:13px;}
+  .mark-btn{margin-top:4px;}
+
+  /* QUIZ */
+  .quiz-card{background:var(--blanco); border-radius:12px; padding:18px; margin-top:16px; border:1px solid var(--borde);}
+  .quiz-q{margin-bottom:18px;}
+  .quiz-q p.q-text{font-weight:600; font-size:14px; margin-bottom:10px;}
+  .opt{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--borde);
+    border-radius:8px; margin-bottom:8px; cursor:pointer; font-size:14px;
+  }
+  .opt.selected{border-color:var(--rojo); background:#fdf1f2;}
+  .opt input{accent-color:var(--rojo);}
+  .quiz-result{text-align:center; padding:20px 0;}
+  .quiz-result .score{font-size:40px; font-weight:700; color:var(--rojo);}
+  .quiz-result.aprobado .score{color:var(--verde);}
+  .quiz-result p{color:var(--gris-med); font-size:14px; margin-top:6px;}
+
+  /* CERT */
+  .cert-card{
+    background:var(--blanco); border-radius:12px; padding:28px 20px; text-align:center;
+    border:2px solid var(--rojo); margin-top:16px;
+  }
+  .cert-card .seal{font-size:38px; color:var(--rojo); margin-bottom:10px;}
+  .cert-card h3{font-size:13px; color:var(--gris-med); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;}
+  .cert-card .nombre{font-size:22px; font-weight:700; margin-bottom:6px;}
+  .cert-card .detalle{font-size:14px; color:var(--gris-med); margin-bottom:4px;}
+
+  @media print{
+    header.top, .btn, .back-btn, nav{display:none !important;}
+    body{background:#fff;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login-screen" class="screen active">
+  <div class="wrap">
+    <div class="logo">
+      <h1>LOMY</h1>
+      <p>Portal de capacitación</p>
+    </div>
+    <div class="login-card">
+      <div class="field">
+        <label for="input-id">Tu ID de empleado</label>
+        <input type="text" id="input-id" placeholder="Ej: 1024" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="input-pin">PIN</label>
+        <input type="password" id="input-pin" placeholder="4 dígitos" inputmode="numeric" maxlength="4">
+      </div>
+      <button class="btn" onclick="handleLogin()">Ingresar</button>
+      <p class="error-msg" id="login-error">ID o PIN incorrecto. Probá de nuevo.</p>
+    </div>
+    <p class="hint">¿No tenés tus datos? Pedíselos a tu Líder de Local.</p>
+  </div>
+</div>
+
+<!-- ============ HOME ============ -->
+<div id="home-screen" class="screen">
+  <header class="top">
+    <div class="row">
+      <div>
+        <h2 id="home-nombre">Hola</h2>
+        <p class="rol-tag" id="home-rol">crew</p>
+      </div>
+      <button class="logout-btn" onclick="logout()">Salir</button>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <p class="progress-label" id="progress-label">0 de 0 módulos completados</p>
+    </div>
+  </header>
+  <div class="wrap">
+    <p class="section-title">Tu capacitación</p>
+    <div id="module-list"></div>
+  </div>
+</div>
+
+<!-- ============ DETALLE DE MÓDULO ============ -->
+<div id="detail-screen" class="screen">
+  <header class="top">
+    <div class="row">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span></span>
+    </div>
+    <h2 id="detail-titulo" style="margin-top:8px;">Título del módulo</h2>
+    <p class="rol-tag" id="detail-estacion">Estación</p>
+  </header>
+  <div class="wrap">
+    <div class="content-box" id="content-box"></div>
+    <div id="fullscreen-area"></div>
+    <button class="btn" id="mark-btn" onclick="marcarCompletado()">Marcar como visto</button>
+    <button class="btn" id="go-quiz-btn" onclick="irAlCuestionario()" style="display:none;">Ir al cuestionario</button>
+  </div>
+</div>
+
+<!-- ============ CUESTIONARIO (pantalla aparte) ============ -->
+<div id="quiz-screen" class="screen">
+  <header class="top">
+    <div class="row">
+      <button class="back-btn" onclick="volverAlModulo()">←</button>
+      <span></span>
+    </div>
+    <h2 style="margin-top:8px;">Cuestionario</h2>
+    <p class="rol-tag" id="quiz-estacion-tag">Estación</p>
+  </header>
+  <div class="wrap">
+    <div id="quiz-area"></div>
+    <div id="cert-area"></div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   CONFIGURACIÓN
+   Pegá acá la URL de tu Apps Script publicado (termina en /exec).
+   Mientras esté vacío, la app corre en modo demo con datos de ejemplo.
+   ====================================================================== */
+const API_URL = "https://script.google.com/macros/s/AKfycbxKC5O9uvZ3-Je9rl5dc1m-IFLZJqxF0Hjc9zTqdz-McrHnaZuvQ2h_9Csu6iSN2c_a/exec";
+const DEMO_MODE = API_URL === "";
+
+let state = { persona: null, contenido: [], progreso: [], moduloActivo: null, preguntasActivas: [] };
+
+/* ---------------- DATOS DEMO (solo si DEMO_MODE) ---------------- */
+const DEMO_PERSONAS = [
+  { ID: "1024", PIN: "1234", Nombre: "Ana Gómez", Rol: "crew", Local: "Shopping del Sol" },
+];
+const DEMO_CONTENIDO = [
+  { ID: "c1", Titulo: "Inducción general Lomy", Rol: "crew", Estacion: "General", Tipo: "video", URL: "", Orden: 1 },
+  { ID: "c2", Titulo: "POE Kesu", Rol: "crew", Estacion: "Armado", Tipo: "pdf", URL: "", Orden: 2 },
+  { ID: "c3", Titulo: "Higiene e inocuidad alimentaria", Rol: "crew", Estacion: "General", Tipo: "video", URL: "", Orden: 3 },
+];
+const DEMO_PREGUNTAS = {
+  c1: [{ ID: "q1", Pregunta: "¿Cómo llamamos al personal de piso en Lomy?", OpcionA: "Personal de cocina", OpcionB: "Crew", OpcionC: "Empleados", OpcionD: "Staff", Correcta: "B" }],
+};
+let demoProgreso = [];
+
+/* ---------------- LOGIN ---------------- */
+async function handleLogin() {
+  const id = document.getElementById("input-id").value.trim();
+  const pin = document.getElementById("input-pin").value.trim();
+  document.getElementById("login-error").style.display = "none";
+  if (!id || !pin) return;
+
+  let res;
+  if (DEMO_MODE) {
+    const p = DEMO_PERSONAS.find(x => x.ID === id && x.PIN === pin);
+    res = p ? { ok: true, persona: { ID: p.ID, Nombre: p.Nombre, Rol: p.Rol, Local: p.Local } } : { ok: false };
+  } else {
+    const r = await fetch(`${API_URL}?action=login&id=${encodeURIComponent(id)}&pin=${encodeURIComponent(pin)}`);
+    res = await r.json();
+  }
+
+  if (!res.ok) {
+    document.getElementById("login-error").style.display = "block";
+    return;
+  }
+  state.persona = res.persona;
+  localStorage.removeItem("lomy_persona"); // no usamos localStorage por restricciones del entorno demo
+  await cargarHome();
+}
+
+function logout() {
+  state = { persona: null, contenido: [], progreso: [], moduloActivo: null, preguntasActivas: [] };
+  document.getElementById("input-id").value = "";
+  document.getElementById("input-pin").value = "";
+  showScreen("login-screen");
+}
+
+/* ---------------- HOME ---------------- */
+async function cargarHome() {
+  document.getElementById("home-nombre").textContent = `Hola, ${state.persona.Nombre.split(" ")[0]}`;
+  document.getElementById("home-rol").textContent = state.persona.Rol === "crew" ? "Crew" : (state.persona.Rol === "lider" ? "Líder de Local" : "Coordinación");
+
+  if (DEMO_MODE) {
+    state.contenido = DEMO_CONTENIDO.filter(c => c.Rol.split(",").includes(state.persona.Rol));
+    state.progreso = demoProgreso;
+  } else {
+    const [rContenido, rProgreso] = await Promise.all([
+      fetch(`${API_URL}?action=contenido&rol=${state.persona.Rol}`),
+      fetch(`${API_URL}?action=progreso&personaId=${state.persona.ID}`),
+    ]);
+    state.contenido = await rContenido.json();
+    state.progreso = await rProgreso.json();
+  }
+
+  renderModuleList();
+  showScreen("home-screen");
+}
+
+function estadoDe(contenidoId) {
+  const p = state.progreso.find(x => String(x.ContenidoID) === String(contenidoId));
+  return p ? p.Estado : "sin_empezar";
+}
+
+function renderModuleList() {
+  const list = document.getElementById("module-list");
+  if (state.contenido.length === 0) {
+    list.innerHTML = `<div class="empty-state">Todavía no hay módulos cargados para tu rol.<br>Consultá con tu Líder de Local.</div>`;
+  } else {
+    list.innerHTML = state.contenido.map(c => {
+      const estado = estadoDe(c.ID);
+      return `
+        <div class="module-card" onclick="abrirModulo('${c.ID}')">
+          <div class="status-dot ${estado}"></div>
+          <div class="module-info">
+            <h3>${c.Titulo}</h3>
+            <p>${c.Estacion}</p>
+            <span class="chip">${c.Tipo === "video" ? "Video" : c.Tipo === "pdf" ? "PDF" : c.Tipo === "slide" ? "Presentación" : "Documento"}</span>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  const completados = state.progreso.filter(p => p.Estado === "completado").length;
+  const total = state.contenido.length;
+  const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = `${completados} de ${total} módulos completados`;
+}
+
+/* ---------------- DETALLE DE MÓDULO ---------------- */
+async function abrirModulo(id) {
+  const c = state.contenido.find(x => x.ID === id);
+  state.moduloActivo = c;
+  document.getElementById("detail-titulo").textContent = c.Titulo;
+  document.getElementById("detail-estacion").textContent = c.Estacion;
+
+  const box = document.getElementById("content-box");
+  const fsArea = document.getElementById("fullscreen-area");
+  fsArea.innerHTML = "";
+  if (c.Tipo === "video" && c.URL) {
+    box.innerHTML = `<iframe class="video-frame" src="${c.URL}" allowfullscreen></iframe>`;
+  } else if ((c.Tipo === "pdf" || c.Tipo === "slide" || c.Tipo === "doc") && c.URL) {
+    box.innerHTML = `<iframe class="doc-frame" src="${c.URL}" allowfullscreen></iframe>`;
+    fsArea.innerHTML = `<a class="fullscreen-link" href="${c.URL}" target="_blank" rel="noopener">Abrir en pantalla completa</a>`;
+  } else {
+    box.innerHTML = `<div class="content-placeholder">Contenido de ejemplo (modo demo).<br>Acá se muestra el video, PDF o presentación cargado en la columna URL del Sheet.</div>`;
+  }
+
+  await cargarPreguntasDisponibles(c.ID);
+  showScreen("detail-screen");
+}
+
+function goHome() {
+  cargarHome();
+  showScreen("home-screen");
+}
+
+async function marcarCompletado() {
+  const c = state.moduloActivo;
+  if (DEMO_MODE) {
+    demoProgreso = demoProgreso.filter(p => p.ContenidoID !== c.ID);
+    demoProgreso.push({ PersonaID: state.persona.ID, ContenidoID: c.ID, Estado: "completado" });
+  } else {
+    await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "marcarCompletado", personaId: state.persona.ID, contenidoId: c.ID }),
+    });
+    const r = await fetch(`${API_URL}?action=progreso&personaId=${state.persona.ID}`);
+    state.progreso = await r.json();
+  }
+  document.getElementById("mark-btn").textContent = "✓ Visto";
+  document.getElementById("mark-btn").disabled = true;
+}
+
+/* ---------------- QUIZ (pantalla aparte) ---------------- */
+async function cargarPreguntasDisponibles(contenidoId) {
+  let preguntas;
+  if (DEMO_MODE) {
+    preguntas = DEMO_PREGUNTAS[contenidoId] || [];
+  } else {
+    const r = await fetch(`${API_URL}?action=preguntas&contenidoId=${contenidoId}`);
+    preguntas = await r.json();
+  }
+  state.preguntasActivas = preguntas;
+
+  const markBtn = document.getElementById("mark-btn");
+  const goQuizBtn = document.getElementById("go-quiz-btn");
+  if (preguntas.length > 0) {
+    markBtn.style.display = "none";
+    goQuizBtn.style.display = "block";
+  } else {
+    markBtn.style.display = "block";
+    markBtn.textContent = "Marcar como visto";
+    markBtn.disabled = false;
+    goQuizBtn.style.display = "none";
+  }
+}
+
+function irAlCuestionario() {
+  document.getElementById("quiz-estacion-tag").textContent = state.moduloActivo.Estacion;
+  mostrarPreguntas();
+  showScreen("quiz-screen");
+}
+
+function volverAlModulo() {
+  showScreen("detail-screen");
+}
+
+function mostrarPreguntas() {
+  const contenidoId = state.moduloActivo.ID;
+  const preguntas = state.preguntasActivas;
+  document.getElementById("cert-area").innerHTML = "";
+  const area = document.getElementById("quiz-area");
+  area.innerHTML = `
+    <div class="quiz-card">
+      <p class="section-title" style="margin-top:0;">Evaluación</p>
+      <div id="quiz-questions"></div>
+      <button class="btn" onclick="enviarQuiz('${contenidoId}')">Enviar respuestas</button>
+    </div>`;
+
+  const qArea = document.getElementById("quiz-questions");
+  qArea.innerHTML = preguntas.map((p, i) => `
+    <div class="quiz-q" data-qid="${p.ID}">
+      <p class="q-text">${i + 1}. ${p.Pregunta}</p>
+      ${["A", "B", "C", "D"].map(letra => p["Opcion" + letra] ? `
+        <label class="opt" onclick="seleccionar(this)">
+          <input type="radio" name="q-${p.ID}" value="${letra}">
+          <span>${p["Opcion" + letra]}</span>
+        </label>` : "").join("")}
+    </div>
+  `).join("");
+}
+
+function seleccionar(label) {
+  const group = label.closest(".quiz-q").querySelectorAll(".opt");
+  group.forEach(o => o.classList.remove("selected"));
+  label.classList.add("selected");
+  label.querySelector("input").checked = true;
+}
+
+async function enviarQuiz(contenidoId) {
+  const respuestas = {};
+  document.querySelectorAll(".quiz-q").forEach(q => {
+    const qid = q.dataset.qid;
+    const checked = q.querySelector("input:checked");
+    if (checked) respuestas[qid] = checked.value;
+  });
+
+  let resultado;
+  if (DEMO_MODE) {
+    const preguntas = DEMO_PREGUNTAS[contenidoId] || [];
+    let correctas = 0;
+    preguntas.forEach(p => { if (respuestas[p.ID] === p.Correcta) correctas++; });
+    const puntaje = Math.round((correctas / preguntas.length) * 100);
+    resultado = { ok: true, puntaje, aprobado: puntaje >= 70, correctas, total: preguntas.length };
+    if (resultado.aprobado) {
+      demoProgreso = demoProgreso.filter(p => p.ContenidoID !== contenidoId);
+      demoProgreso.push({ PersonaID: state.persona.ID, ContenidoID: contenidoId, Estado: "completado", Puntaje: puntaje });
+    }
+  } else {
+    const r = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "enviarQuiz", personaId: state.persona.ID, contenidoId, respuestas }),
+    });
+    resultado = await r.json();
+    const rp = await fetch(`${API_URL}?action=progreso&personaId=${state.persona.ID}`);
+    state.progreso = await rp.json();
+  }
+
+  const area = document.getElementById("quiz-area");
+  area.innerHTML = `
+    <div class="quiz-result ${resultado.aprobado ? "aprobado" : ""}">
+      <div class="score">${resultado.puntaje}%</div>
+      <p>${resultado.correctas} de ${resultado.total} correctas — ${resultado.aprobado ? "¡Aprobado!" : "No alcanza el mínimo (70%)"}</p>
+      ${!resultado.aprobado ? `<button class="btn btn-secondary" style="margin-top:14px;" onclick="mostrarPreguntas()">Reintentar</button>` : ""}
+    </div>`;
+
+  if (resultado.aprobado) mostrarCertificado(contenidoId);
+}
+
+/* ---------------- CERTIFICADO ---------------- */
+function mostrarCertificado(contenidoId) {
+  const c = state.moduloActivo;
+  const area = document.getElementById("cert-area");
+  const fecha = new Date().toLocaleDateString("es-PY", { year: "numeric", month: "long", day: "numeric" });
+  area.innerHTML = `
+    <div class="cert-card">
+      <div class="seal">✓</div>
+      <h3>Certificado de habilitación</h3>
+      <p class="nombre">${state.persona.Nombre}</p>
+      <p class="detalle">${c.Titulo} — ${c.Estacion}</p>
+      <p class="detalle">${state.persona.Local} · ${fecha}</p>
+      <button class="btn btn-secondary" style="margin-top:16px;" onclick="window.print()">Descargar / imprimir</button>
+    </div>`;
+}
+
+/* ---------------- NAV ---------------- */
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+</script>
+</body>
+</html>

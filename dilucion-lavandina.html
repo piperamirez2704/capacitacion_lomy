@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dilución de lavandina — Lomy</title>
+<style>
+  :root{
+    --rojo:#C93243; --rojo-dark:#7C1F29; --gris-osc:#2B2B2B; --gris-med:#6b6b6b;
+    --gris-claro:#f4f3f1; --borde:#e2e0da; --verde:#3b8a52; --blanco:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--gris-claro); color:var(--gris-osc); min-height:100vh;
+  }
+  .wrap{max-width:480px; margin:0 auto; padding:24px 18px 40px;}
+  h1{font-size:20px; color:var(--gris-osc); margin-bottom:4px;}
+  .subtitle{font-size:13px; color:var(--gris-med); margin-bottom:24px;}
+
+  .step{margin-bottom:22px;}
+  .step-label{font-size:12px; font-weight:700; color:var(--rojo); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; display:flex; align-items:center; gap:8px;}
+  .step-num{
+    width:20px; height:20px; border-radius:50%; background:var(--rojo); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;
+  }
+  .options{display:flex; flex-direction:column; gap:8px;}
+  .opt-btn{
+    background:var(--blanco); border:1.5px solid var(--borde); border-radius:10px;
+    padding:13px 14px; font-size:14px; text-align:left; cursor:pointer; color:var(--gris-osc);
+    transition:border-color 0.15s;
+  }
+  .opt-btn.selected{border-color:var(--rojo); background:#fdf1f2; font-weight:600;}
+  .opt-btn small{display:block; color:var(--gris-med); font-weight:400; font-size:12px; margin-top:2px;}
+
+  .step.disabled{opacity:0.4; pointer-events:none;}
+
+  .result{
+    display:none; background:var(--gris-osc); border-radius:14px; padding:24px 20px; margin-top:8px;
+  }
+  .result.show{display:block;}
+  .result .ppm-tag{font-size:11px; color:#D8D6D0; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;}
+  .result .ml{font-size:44px; font-weight:700; color:#fff; line-height:1;}
+  .result .ml span{font-size:18px; font-weight:400; color:#D8D6D0;}
+  .result .detail{font-size:13px; color:#D8D6D0; margin-top:12px; line-height:1.5;}
+  .result .contact-time{
+    margin-top:14px; padding-top:14px; border-top:1px solid #444; font-size:13px; color:#fff;
+  }
+  .result .contact-time b{color:var(--rojo);}
+  .reset-link{display:block; text-align:center; margin-top:18px; font-size:13px; color:var(--gris-med); text-decoration:underline; cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dilución de lavandina</h1>
+  <p class="subtitle">Elegí tu producto y para qué la vas a usar. Te decimos cuánta lavandina poner por litro de agua.</p>
+
+  <div class="step" id="step1">
+    <div class="step-label"><span class="step-num">1</span> ¿Qué lavandina tenés?</div>
+    <div class="options" id="opts-concentracion">
+      <button class="opt-btn" data-conc="25">Lavandina común <small>25 g/L de cloro activo — la más habitual</small></button>
+      <button class="opt-btn" data-conc="55">Lavandina concentrada <small>55 g/L de cloro activo — presentación profesional</small></button>
+    </div>
+  </div>
+
+  <div class="step disabled" id="step2">
+    <div class="step-label"><span class="step-num">2</span> ¿Para qué la vas a usar?</div>
+    <div class="options" id="opts-uso">
+      <button class="opt-btn" data-ppm="200" data-tiempo="1 minuto, después enjuagar con agua">Superficies en contacto con alimentos <small>Mesadas, tablas, utensilios</small></button>
+      <button class="opt-btn" data-ppm="150" data-tiempo="1 a 2 minutos, después enjuagar con agua">Frutas y verduras <small>Antes de servir crudas</small></button>
+      <button class="opt-btn" data-ppm="700" data-tiempo="Dejar secar al aire, no enjuagar">Superficies generales <small>Pisos, paredes, baños</small></button>
+      <button class="opt-btn" data-ppm="1000" data-tiempo="Dejar secar al aire, no enjuagar">Situación de alto riesgo <small>Brote, enfermedad, contaminación conocida</small></button>
+    </div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="ppm-tag" id="result-tag">200 ppm de cloro activo</div>
+    <div class="ml" id="result-ml">8.0 <span>mL por litro de agua</span></div>
+    <div class="contact-time" id="result-tiempo"><b>Tiempo de contacto:</b> 1 minuto, después enjuagar con agua</div>
+    <div class="detail" id="result-detail"></div>
+  </div>
+
+  <div class="reset-link" id="reset-link" style="display:none;">Empezar de nuevo</div>
+</div>
+
+<script>
+let concSeleccionada = null;
+let usoSeleccionado = null;
+
+document.querySelectorAll('#opts-concentracion .opt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#opts-concentracion .opt-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    concSeleccionada = parseFloat(btn.dataset.conc);
+    document.getElementById('step2').classList.remove('disabled');
+    calcular();
+  });
+});
+
+document.querySelectorAll('#opts-uso .opt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#opts-uso .opt-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    usoSeleccionado = { ppm: parseFloat(btn.dataset.ppm), tiempo: btn.dataset.tiempo, nombre: btn.textContent.trim() };
+    calcular();
+  });
+});
+
+function calcular() {
+  if (!concSeleccionada || !usoSeleccionado) return;
+  const gL = usoSeleccionado.ppm / 1000;
+  const mlPorLitro = (gL * 1000 / concSeleccionada).toFixed(1);
+
+  document.getElementById('result-tag').textContent = `${usoSeleccionado.ppm} ppm de cloro activo`;
+  document.getElementById('result-ml').innerHTML = `${mlPorLitro} <span>mL por litro de agua</span>`;
+  document.getElementById('result-tiempo').innerHTML = `<b>Tiempo de contacto:</b> ${usoSeleccionado.tiempo}`;
+  document.getElementById('result-detail').textContent = `Cálculo para lavandina de ${concSeleccionada} g/L de cloro activo.`;
+  document.getElementById('result').classList.add('show');
+  document.getElementById('reset-link').style.display = 'block';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.getElementById('reset-link').addEventListener('click', () => {
+  concSeleccionada = null;
+  usoSeleccionado = null;
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('step2').classList.add('disabled');
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('reset-link').style.display = 'none';
+});
+</script>
+</body>
+</html>
